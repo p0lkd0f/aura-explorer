@@ -1,0 +1,251 @@
+import { useState, useEffect } from 'react';
+import { Copy, Code2, Terminal, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CodeEditor } from './CodeEditor';
+import type { AuraAction, AuraPayload, AuraContext, FullHttpRequest } from '@/lib/aura/types';
+import { buildPayload, buildContext, buildRawRequest, formatAsCurl, formatAsBurp } from '@/lib/aura/payload';
+import { generateSampleParams } from '@/lib/aura/defaults';
+import { toast } from 'sonner';
+
+interface PayloadBuilderProps {
+  action: AuraAction | null;
+}
+
+export function PayloadBuilder({ action }: PayloadBuilderProps) {
+  const [targetUrl, setTargetUrl] = useState('https://example.salesforce.com');
+  const [params, setParams] = useState<Record<string, unknown>>({});
+  const [context, setContext] = useState<AuraContext>(buildContext());
+  const [payload, setPayload] = useState<AuraPayload | null>(null);
+  const [request, setRequest] = useState<FullHttpRequest | null>(null);
+
+  useEffect(() => {
+    if (action) {
+      setParams(generateSampleParams(action.parameters));
+    }
+  }, [action]);
+
+  useEffect(() => {
+    if (action) {
+      const newPayload = buildPayload(action.controller, action.name, params);
+      setPayload(newPayload);
+      setRequest(buildRawRequest(targetUrl, newPayload, context));
+    }
+  }, [action, params, targetUrl, context]);
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copied to clipboard`);
+  };
+
+  if (!action) {
+    return (
+      <div className="glow-card rounded-lg p-8 text-center">
+        <Code2 className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
+        <p className="text-muted-foreground">
+          Select an action to build a payload
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Target Configuration */}
+      <div className="glow-card rounded-lg p-4 space-y-4">
+        <h3 className="font-semibold text-sm flex items-center gap-2">
+          <Terminal className="w-4 h-4 text-primary" />
+          Target Configuration
+        </h3>
+
+        <div className="grid gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="targetUrl" className="text-xs text-muted-foreground">
+              Target URL
+            </Label>
+            <Input
+              id="targetUrl"
+              value={targetUrl}
+              onChange={(e) => setTargetUrl(e.target.value)}
+              className="font-mono text-sm bg-muted/50 border-border/50"
+              placeholder="https://target.salesforce.com"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="fwuid" className="text-xs text-muted-foreground">
+                Framework UID (fwuid)
+              </Label>
+              <Input
+                id="fwuid"
+                value={context.fwuid}
+                onChange={(e) => setContext({ ...context, fwuid: e.target.value })}
+                className="font-mono text-sm bg-muted/50 border-border/50"
+                placeholder="Optional"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="app" className="text-xs text-muted-foreground">
+                App Name
+              </Label>
+              <Input
+                id="app"
+                value={context.app}
+                onChange={(e) => setContext({ ...context, app: e.target.value })}
+                className="font-mono text-sm bg-muted/50 border-border/50"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Parameters */}
+      <div className="glow-card rounded-lg p-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-sm">Action Parameters</h3>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 text-xs"
+            onClick={() => setParams(generateSampleParams(action.parameters))}
+          >
+            <RefreshCw className="w-3 h-3 mr-1" />
+            Reset
+          </Button>
+        </div>
+
+        <CodeEditor
+          value={JSON.stringify(params, null, 2)}
+          onChange={(val) => {
+            try {
+              setParams(JSON.parse(val));
+            } catch {
+              // Invalid JSON, ignore
+            }
+          }}
+          language="json"
+          minHeight="120px"
+        />
+      </div>
+
+      {/* Output */}
+      <Tabs defaultValue="payload" className="space-y-4">
+        <TabsList className="bg-muted/50 p-1">
+          <TabsTrigger value="payload" className="text-xs">Payload</TabsTrigger>
+          <TabsTrigger value="context" className="text-xs">Context</TabsTrigger>
+          <TabsTrigger value="raw" className="text-xs">Raw HTTP</TabsTrigger>
+          <TabsTrigger value="curl" className="text-xs">cURL</TabsTrigger>
+          <TabsTrigger value="burp" className="text-xs">Burp</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="payload" className="space-y-2">
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs"
+              onClick={() => copyToClipboard(JSON.stringify(payload, null, 2), 'Payload')}
+            >
+              <Copy className="w-3 h-3 mr-1" />
+              Copy
+            </Button>
+          </div>
+          <CodeEditor
+            value={JSON.stringify(payload, null, 2)}
+            onChange={() => {}}
+            language="json"
+            readOnly
+            minHeight="200px"
+          />
+        </TabsContent>
+
+        <TabsContent value="context" className="space-y-2">
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs"
+              onClick={() => copyToClipboard(JSON.stringify(context, null, 2), 'Context')}
+            >
+              <Copy className="w-3 h-3 mr-1" />
+              Copy
+            </Button>
+          </div>
+          <CodeEditor
+            value={JSON.stringify(context, null, 2)}
+            onChange={() => {}}
+            language="json"
+            readOnly
+            minHeight="200px"
+          />
+        </TabsContent>
+
+        <TabsContent value="raw" className="space-y-2">
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs"
+              onClick={() => request && copyToClipboard(formatAsBurp(request), 'Raw request')}
+            >
+              <Copy className="w-3 h-3 mr-1" />
+              Copy
+            </Button>
+          </div>
+          <CodeEditor
+            value={request ? formatAsBurp(request) : ''}
+            onChange={() => {}}
+            language="http"
+            readOnly
+            minHeight="300px"
+          />
+        </TabsContent>
+
+        <TabsContent value="curl" className="space-y-2">
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs"
+              onClick={() => request && copyToClipboard(formatAsCurl(request), 'cURL command')}
+            >
+              <Copy className="w-3 h-3 mr-1" />
+              Copy
+            </Button>
+          </div>
+          <CodeEditor
+            value={request ? formatAsCurl(request) : ''}
+            onChange={() => {}}
+            language="http"
+            readOnly
+            minHeight="250px"
+          />
+        </TabsContent>
+
+        <TabsContent value="burp" className="space-y-2">
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs"
+              onClick={() => request && copyToClipboard(formatAsBurp(request), 'Burp request')}
+            >
+              <Copy className="w-3 h-3 mr-1" />
+              Copy
+            </Button>
+          </div>
+          <CodeEditor
+            value={request ? formatAsBurp(request) : ''}
+            onChange={() => {}}
+            language="http"
+            readOnly
+            minHeight="300px"
+          />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
