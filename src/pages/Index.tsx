@@ -5,9 +5,10 @@ import { Header } from '@/components/aura/Header';
 import { CodeEditor } from '@/components/aura/CodeEditor';
 import { ScanResults } from '@/components/aura/ScanResults';
 import { PayloadBuilder } from '@/components/aura/PayloadBuilder';
-import { parseAuraActions, extractFwuid, extractAppName } from '@/lib/aura/parser';
+import { UrlScanner } from '@/components/aura/UrlScanner';
+import { parseAuraActions } from '@/lib/aura/parser';
 import type { AuraAction, ScanResult } from '@/lib/aura/types';
-import { Scan, Code2, FileCode, Sparkles } from 'lucide-react';
+import { Scan, Code2, FileCode, Sparkles, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 
 const SAMPLE_JS = `// Sample Salesforce Aura JavaScript
@@ -31,8 +32,9 @@ export default function Index() {
   const [isScanning, setIsScanning] = useState(false);
   const [selectedAction, setSelectedAction] = useState<AuraAction | null>(null);
   const [activeTab, setActiveTab] = useState('scanner');
+  const [scanMode, setScanMode] = useState<'js' | 'url'>('js');
 
-  const handleScan = async () => {
+  const handleJsScan = async () => {
     if (!jsCode.trim()) {
       toast.error('Please paste JavaScript code to scan');
       return;
@@ -42,13 +44,10 @@ export default function Index() {
     setScanResult(null);
     setSelectedAction(null);
 
-    // Simulate async processing
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     try {
       const actions = parseAuraActions(jsCode);
-      const fwuid = extractFwuid(jsCode);
-      const app = extractAppName(jsCode);
 
       setScanResult({
         success: true,
@@ -67,6 +66,11 @@ export default function Index() {
     } finally {
       setIsScanning(false);
     }
+  };
+
+  const handleUrlScanComplete = (result: ScanResult) => {
+    setScanResult(result);
+    setSelectedAction(null);
   };
 
   const handleBuildPayload = (action: AuraAction) => {
@@ -103,7 +107,7 @@ export default function Index() {
               </TabsTrigger>
             </TabsList>
 
-            {activeTab === 'scanner' && (
+            {activeTab === 'scanner' && scanMode === 'js' && (
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="sm" onClick={loadSample} className="gap-2">
                   <FileCode className="w-4 h-4" />
@@ -114,44 +118,72 @@ export default function Index() {
           </div>
 
           <TabsContent value="scanner" className="space-y-6">
+            {/* Scan Mode Toggle */}
+            <div className="flex items-center gap-2 p-1 bg-muted/30 rounded-lg w-fit">
+              <Button
+                variant={scanMode === 'js' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setScanMode('js')}
+                className="gap-2"
+              >
+                <FileCode className="w-4 h-4" />
+                JS Paste
+              </Button>
+              <Button
+                variant={scanMode === 'url' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setScanMode('url')}
+                className="gap-2"
+              >
+                <Globe className="w-4 h-4" />
+                URL Scan
+              </Button>
+            </div>
+
             <div className="grid lg:grid-cols-2 gap-6">
               {/* Input Panel */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                    JavaScript Input
-                  </h2>
-                  <span className="text-xs text-muted-foreground font-mono">
-                    {jsCode.length.toLocaleString()} chars
-                  </span>
-                </div>
+                {scanMode === 'url' ? (
+                  <UrlScanner onScanComplete={handleUrlScanComplete} />
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                        JavaScript Input
+                      </h2>
+                      <span className="text-xs text-muted-foreground font-mono">
+                        {jsCode.length.toLocaleString()} chars
+                      </span>
+                    </div>
 
-                <CodeEditor
-                  value={jsCode}
-                  onChange={setJsCode}
-                  placeholder="Paste Salesforce JavaScript code here..."
-                  language="javascript"
-                  minHeight="400px"
-                />
+                    <CodeEditor
+                      value={jsCode}
+                      onChange={setJsCode}
+                      placeholder="Paste Salesforce JavaScript code here..."
+                      language="javascript"
+                      minHeight="400px"
+                    />
 
-                <Button
-                  onClick={handleScan}
-                  disabled={isScanning || !jsCode.trim()}
-                  className="w-full gap-2 neon-border"
-                  size="lg"
-                >
-                  {isScanning ? (
-                    <>
-                      <Sparkles className="w-4 h-4 animate-spin" />
-                      Scanning...
-                    </>
-                  ) : (
-                    <>
-                      <Scan className="w-4 h-4" />
-                      Scan for Aura Actions
-                    </>
-                  )}
-                </Button>
+                    <Button
+                      onClick={handleJsScan}
+                      disabled={isScanning || !jsCode.trim()}
+                      className="w-full gap-2 neon-border"
+                      size="lg"
+                    >
+                      {isScanning ? (
+                        <>
+                          <Sparkles className="w-4 h-4 animate-spin" />
+                          Scanning...
+                        </>
+                      ) : (
+                        <>
+                          <Scan className="w-4 h-4" />
+                          Scan for Aura Actions
+                        </>
+                      )}
+                    </Button>
+                  </>
+                )}
               </div>
 
               {/* Results Panel */}
