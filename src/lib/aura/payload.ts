@@ -103,9 +103,13 @@ export function formatAsCurl(request: FullHttpRequest): string {
     .map(([k, v]) => `-H '${k}: ${v}'`)
     .join(' \\\n  ');
 
+  // Format body with line breaks for readability
+  const formattedBody = request.body
+    .replace(/&/g, '&\\\n');
+
   return `curl -X ${request.method} '${request.url}' \\
   ${headers} \\
-  --data-raw '${request.body}'`;
+  --data-raw '${formattedBody}'`;
 }
 
 export function formatAsBurp(request: FullHttpRequest): string {
@@ -114,9 +118,13 @@ export function formatAsBurp(request: FullHttpRequest): string {
     .map(([k, v]) => `${k}: ${v}`)
     .join('\n');
 
+  // Format body with line breaks for readability
+  const formattedBody = request.body
+    .replace(/&aura\./g, '\n&aura.');
+
   return `${request.method} ${url.pathname}${url.search} HTTP/1.1
 Host: ${url.host}
 ${headerLines}
 
-${request.body}`;
+${formattedBody}`;
 }
