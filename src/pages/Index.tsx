@@ -33,6 +33,7 @@ export default function Index() {
   const [selectedAction, setSelectedAction] = useState<AuraAction | null>(null);
   const [activeTab, setActiveTab] = useState('scanner');
   const [scanMode, setScanMode] = useState<'js' | 'url'>('js');
+  const [scannedUrl, setScannedUrl] = useState<string>('');
 
   const handleJsScan = async () => {
     if (!jsCode.trim()) {
@@ -68,9 +69,10 @@ export default function Index() {
     }
   };
 
-  const handleUrlScanComplete = (result: ScanResult) => {
+  const handleUrlScanComplete = (result: ScanResult, url: string) => {
     setScanResult(result);
     setSelectedAction(null);
+    setScannedUrl(url);
   };
 
   const handleBuildPayload = (action: AuraAction) => {
@@ -215,7 +217,7 @@ export default function Index() {
                 )}
               </h2>
 
-              <PayloadBuilder action={selectedAction} />
+              <PayloadBuilder action={selectedAction} scanResult={scanResult} />
             </div>
           </TabsContent>
         </Tabs>

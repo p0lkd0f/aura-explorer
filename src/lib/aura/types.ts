@@ -39,9 +39,17 @@ export interface FullHttpRequest {
   body: string;
 }
 
+export interface ScanMetadata {
+  fwuid: string | null;
+  app: string | null;
+  token: string | null;
+  scannedUrl?: string;
+}
+
 export interface ScanResult {
   success: boolean;
   rawMatches: number;
   controllers: AuraAction[];
   timestamp: Date;
+  metadata?: ScanMetadata;
 }

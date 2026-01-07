@@ -8,7 +8,7 @@ import type { ScanResult } from '@/lib/aura/types';
 import { toast } from 'sonner';
 
 interface UrlScannerProps {
-  onScanComplete: (result: ScanResult) => void;
+  onScanComplete: (result: ScanResult, url: string) => void;
 }
 
 export function UrlScanner({ onScanComplete }: UrlScannerProps) {
@@ -33,7 +33,7 @@ export function UrlScanner({ onScanComplete }: UrlScannerProps) {
 
     try {
       const result = await scanUrl(normalizedUrl);
-      onScanComplete(result);
+      onScanComplete(result, normalizedUrl);
       
       if (result.rawMatches > 0) {
         toast.success(`Found ${result.rawMatches} Aura action${result.rawMatches !== 1 ? 's' : ''}`);
