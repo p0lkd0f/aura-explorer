@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
-import { Copy, Code2, Terminal, RefreshCw } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Copy, Code2, Terminal, RefreshCw, Shield, ShieldAlert, ShieldCheck, Cookie } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
 import { CodeEditor } from './CodeEditor';
-import type { AuraAction, AuraPayload, AuraContext, FullHttpRequest, ScanResult } from '@/lib/aura/types';
-import { buildPayload, buildContext, buildRawRequest, formatAsCurl, formatAsBurp } from '@/lib/aura/payload';
+import type { AuraAction, AuraPayload, AuraContext, FullHttpRequest, ScanResult, SessionValidation } from '@/lib/aura/types';
+import { buildPayload, buildContext, buildRawRequest, formatAsCurl, formatAsBurp, validateSession } from '@/lib/aura/payload';
 import { generateSampleParams } from '@/lib/aura/defaults';
 import { toast } from 'sonner';
 
@@ -28,6 +29,23 @@ export function PayloadBuilder({ action, scanResult }: PayloadBuilderProps) {
   const [payload, setPayload] = useState<AuraPayload | null>(null);
   const [request, setRequest] = useState<FullHttpRequest | null>(null);
   const [token, setToken] = useState(scanResult?.metadata?.token || 'null');
+  const [cookies, setCookies] = useState('');
+
+  // Session validation
+  const sessionValidation = useMemo<SessionValidation>(() => 
+    validateSession(token, context.fwuid, cookies),
+    [token, context.fwuid, cookies]
+  );
+
+  const sessionScore = useMemo(() => {
+    const checks = [
+      sessionValidation.hasToken,
+      sessionValidation.hasFwuid,
+      sessionValidation.hasCookies,
+      sessionValidation.hasSid,
+    ];
+    return checks.filter(Boolean).length;
+  }, [sessionValidation]);
 
   // Update context and URL when scan result changes
   useEffect(() => {
@@ -56,9 +74,9 @@ export function PayloadBuilder({ action, scanResult }: PayloadBuilderProps) {
     if (action) {
       const newPayload = buildPayload(action.controller, action.name, params);
       setPayload(newPayload);
-      setRequest(buildRawRequest(targetUrl, newPayload, context, token));
+      setRequest(buildRawRequest(targetUrl, newPayload, context, token, cookies));
     }
-  }, [action, params, targetUrl, context, token]);
+  }, [action, params, targetUrl, context, token, cookies]);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -136,6 +154,72 @@ export function PayloadBuilder({ action, scanResult }: PayloadBuilderProps) {
               />
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Session Configuration */}
+      <div className="glow-card rounded-lg p-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-sm flex items-center gap-2">
+            <Cookie className="w-4 h-4 text-primary" />
+            Session & Cookies
+          </h3>
+          <div className="flex items-center gap-2">
+            {sessionScore === 0 && (
+              <span className="flex items-center gap-1 text-xs text-destructive">
+                <ShieldAlert className="w-3 h-3" />
+                No Session
+              </span>
+            )}
+            {sessionScore > 0 && sessionScore < 4 && (
+              <span className="flex items-center gap-1 text-xs text-yellow-500">
+                <Shield className="w-3 h-3" />
+                Partial ({sessionScore}/4)
+              </span>
+            )}
+            {sessionScore === 4 && (
+              <span className="flex items-center gap-1 text-xs text-green-500">
+                <ShieldCheck className="w-3 h-3" />
+                Valid Session
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Session Validation Checklist */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+          <div className={`flex items-center gap-1.5 p-2 rounded ${sessionValidation.hasToken ? 'bg-green-500/10 text-green-400' : 'bg-muted/30 text-muted-foreground'}`}>
+            <div className={`w-2 h-2 rounded-full ${sessionValidation.hasToken ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
+            aura.token
+          </div>
+          <div className={`flex items-center gap-1.5 p-2 rounded ${sessionValidation.hasFwuid ? 'bg-green-500/10 text-green-400' : 'bg-muted/30 text-muted-foreground'}`}>
+            <div className={`w-2 h-2 rounded-full ${sessionValidation.hasFwuid ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
+            fwuid
+          </div>
+          <div className={`flex items-center gap-1.5 p-2 rounded ${sessionValidation.hasSid ? 'bg-green-500/10 text-green-400' : 'bg-muted/30 text-muted-foreground'}`}>
+            <div className={`w-2 h-2 rounded-full ${sessionValidation.hasSid ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
+            sid cookie
+          </div>
+          <div className={`flex items-center gap-1.5 p-2 rounded ${sessionValidation.hasCookies ? 'bg-green-500/10 text-green-400' : 'bg-muted/30 text-muted-foreground'}`}>
+            <div className={`w-2 h-2 rounded-full ${sessionValidation.hasCookies ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
+            Cookies
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="cookies" className="text-xs text-muted-foreground">
+            Session Cookies (paste from browser DevTools)
+          </Label>
+          <Textarea
+            id="cookies"
+            value={cookies}
+            onChange={(e) => setCookies(e.target.value)}
+            className="font-mono text-xs bg-muted/50 border-border/50 min-h-[80px]"
+            placeholder="sid=...; renderCtx=...; BrowserId=...; ..."
+          />
+          <p className="text-xs text-muted-foreground">
+            Tip: Open DevTools → Network → copy Cookie header from any authenticated request
+          </p>
         </div>
       </div>
 
