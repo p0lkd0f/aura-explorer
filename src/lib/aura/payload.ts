@@ -77,7 +77,8 @@ export function buildRawRequest(
     `aura.token=${token}`
   ].join('&');
 
-  const auraEndpoint = `${url.origin}${url.pathname.replace(/\/$/, '')}/s/sfsites/aura`;
+  // Always use origin + /s/sfsites/aura - ignore the original path
+  const auraEndpoint = `${url.origin}/s/sfsites/aura`;
   const queryParams = new URLSearchParams({
     r: '1',
     'aura.ApexAction.execute': '1'
