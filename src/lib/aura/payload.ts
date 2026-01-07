@@ -1,4 +1,4 @@
-import type { AuraPayload, AuraContext, FullHttpRequest } from './types';
+import type { AuraPayload, AuraContext, FullHttpRequest, SessionValidation } from './types';
 
 export function generateUUID(): string {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
@@ -66,7 +66,8 @@ export function buildRawRequest(
   targetUrl: string,
   payload: AuraPayload,
   context: AuraContext,
-  token: string = 'null'
+  token: string = 'null',
+  cookies: string = ''
 ): FullHttpRequest {
   const url = new URL(targetUrl);
   
@@ -82,19 +83,38 @@ export function buildRawRequest(
     'aura.ApexAction.execute': '1'
   });
 
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+    'Origin': url.origin,
+    'Referer': targetUrl,
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    'Accept': '*/*',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Cache-Control': 'no-cache'
+  };
+
+  // Add cookies if provided
+  if (cookies.trim()) {
+    headers['Cookie'] = cookies.trim();
+  }
+
   return {
     method: 'POST',
     url: `${auraEndpoint}?${queryParams.toString()}`,
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-      'Origin': url.origin,
-      'Referer': targetUrl,
-      'User-Agent': 'AuraScanner/1.0',
-      'Accept': '*/*',
-      'Accept-Language': 'en-US,en;q=0.9',
-      'Cache-Control': 'no-cache'
-    },
+    headers,
     body
+  };
+}
+
+export function validateSession(token: string, fwuid: string, cookies: string): SessionValidation {
+  const cookieLower = cookies.toLowerCase();
+  return {
+    hasToken: token !== 'null' && token.trim().length > 0,
+    hasFwuid: fwuid.trim().length > 0,
+    hasCookies: cookies.trim().length > 0,
+    hasSid: cookieLower.includes('sid='),
+    hasRenderCtx: cookieLower.includes('renderctx'),
+    hasAuraContext: cookieLower.includes('auracontext') || cookieLower.includes('aura.context'),
   };
 }
 

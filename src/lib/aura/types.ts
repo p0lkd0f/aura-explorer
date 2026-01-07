@@ -39,6 +39,23 @@ export interface FullHttpRequest {
   body: string;
 }
 
+export interface AuraSession {
+  cookies: string;
+  token: string;
+  fwuid: string;
+  app: string;
+  isValid: boolean;
+}
+
+export interface SessionValidation {
+  hasToken: boolean;
+  hasFwuid: boolean;
+  hasCookies: boolean;
+  hasSid: boolean;
+  hasRenderCtx: boolean;
+  hasAuraContext: boolean;
+}
+
 export interface ScanMetadata {
   fwuid: string | null;
   app: string | null;
