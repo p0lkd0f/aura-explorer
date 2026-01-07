@@ -5,21 +5,46 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CodeEditor } from './CodeEditor';
-import type { AuraAction, AuraPayload, AuraContext, FullHttpRequest } from '@/lib/aura/types';
+import type { AuraAction, AuraPayload, AuraContext, FullHttpRequest, ScanResult } from '@/lib/aura/types';
 import { buildPayload, buildContext, buildRawRequest, formatAsCurl, formatAsBurp } from '@/lib/aura/payload';
 import { generateSampleParams } from '@/lib/aura/defaults';
 import { toast } from 'sonner';
 
 interface PayloadBuilderProps {
   action: AuraAction | null;
+  scanResult?: ScanResult | null;
 }
 
-export function PayloadBuilder({ action }: PayloadBuilderProps) {
-  const [targetUrl, setTargetUrl] = useState('https://example.salesforce.com');
+export function PayloadBuilder({ action, scanResult }: PayloadBuilderProps) {
+  // Use scanned URL or default
+  const defaultUrl = scanResult?.metadata?.scannedUrl || 'https://example.salesforce.com';
+  
+  const [targetUrl, setTargetUrl] = useState(defaultUrl);
   const [params, setParams] = useState<Record<string, unknown>>({});
-  const [context, setContext] = useState<AuraContext>(buildContext());
+  const [context, setContext] = useState<AuraContext>(() => buildContext({
+    fwuid: scanResult?.metadata?.fwuid || '',
+    app: scanResult?.metadata?.app || 'siteforce:loginApp2',
+  }));
   const [payload, setPayload] = useState<AuraPayload | null>(null);
   const [request, setRequest] = useState<FullHttpRequest | null>(null);
+  const [token, setToken] = useState(scanResult?.metadata?.token || 'null');
+
+  // Update context and URL when scan result changes
+  useEffect(() => {
+    if (scanResult?.metadata) {
+      const { fwuid, app, scannedUrl, token: scannedToken } = scanResult.metadata;
+      setContext(buildContext({
+        fwuid: fwuid || '',
+        app: app || 'siteforce:loginApp2',
+      }));
+      if (scannedUrl) {
+        setTargetUrl(scannedUrl);
+      }
+      if (scannedToken) {
+        setToken(scannedToken);
+      }
+    }
+  }, [scanResult]);
 
   useEffect(() => {
     if (action) {
@@ -31,9 +56,9 @@ export function PayloadBuilder({ action }: PayloadBuilderProps) {
     if (action) {
       const newPayload = buildPayload(action.controller, action.name, params);
       setPayload(newPayload);
-      setRequest(buildRawRequest(targetUrl, newPayload, context));
+      setRequest(buildRawRequest(targetUrl, newPayload, context, token));
     }
-  }, [action, params, targetUrl, context]);
+  }, [action, params, targetUrl, context, token]);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -74,7 +99,7 @@ export function PayloadBuilder({ action }: PayloadBuilderProps) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="fwuid" className="text-xs text-muted-foreground">
                 Framework UID (fwuid)
@@ -96,6 +121,18 @@ export function PayloadBuilder({ action }: PayloadBuilderProps) {
                 value={context.app}
                 onChange={(e) => setContext({ ...context, app: e.target.value })}
                 className="font-mono text-sm bg-muted/50 border-border/50"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="token" className="text-xs text-muted-foreground">
+                Aura Token
+              </Label>
+              <Input
+                id="token"
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                className="font-mono text-sm bg-muted/50 border-border/50"
+                placeholder="null"
               />
             </div>
           </div>

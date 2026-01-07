@@ -44,11 +44,18 @@ export function buildMultiActionPayload(
 }
 
 export function buildContext(options: Partial<AuraContext> = {}): AuraContext {
+  const app = options.app || 'siteforce:loginApp2';
+  // Build the loaded object with APPLICATION markup if not provided
+  const defaultLoaded: Record<string, string> = {};
+  if (app) {
+    defaultLoaded[`APPLICATION@markup://${app}`] = '';
+  }
+  
   return {
     mode: options.mode || 'PROD',
     fwuid: options.fwuid || '',
-    app: options.app || 'siteforce:loginApp2',
-    loaded: options.loaded || {},
+    app,
+    loaded: options.loaded || defaultLoaded,
     dn: options.dn || [],
     globals: options.globals || {},
     uad: options.uad ?? true

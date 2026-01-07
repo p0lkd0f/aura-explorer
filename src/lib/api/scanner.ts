@@ -33,5 +33,9 @@ export async function scanUrl(url: string): Promise<ScanResult> {
     rawMatches: data.rawMatches,
     controllers: data.controllers,
     timestamp: new Date(),
+    metadata: data.metadata ? {
+      ...data.metadata,
+      scannedUrl: url,
+    } : undefined,
   };
 }
