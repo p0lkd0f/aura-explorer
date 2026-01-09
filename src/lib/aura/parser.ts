@@ -1,4 +1,4 @@
-import type { AuraAction } from './types';
+import type { AuraAction, ActionParameter } from './types';
 
 // Primary pattern for aura:// descriptors
 const AURA_DESCRIPTOR_PATTERN = /aura:\/\/([^/]+)\/ACTION\$([A-Za-z0-9_]+)/g;
@@ -48,8 +48,8 @@ export function parseAuraActions(js: string): AuraAction[] {
 }
 
 // Attempt to infer parameters from surrounding context
-function inferParameters(js: string, controller: string, action: string): { name: string; type: string }[] {
-  const params: { name: string; type: string }[] = [];
+function inferParameters(js: string, controller: string, action: string): ActionParameter[] {
+  const params: ActionParameter[] = [];
   
   // Look for setParams calls near the action
   const paramPattern = new RegExp(
@@ -64,7 +64,13 @@ function inferParameters(js: string, controller: string, action: string): { name
     let keyMatch;
     while ((keyMatch = keyPattern.exec(paramsStr)) !== null) {
       if (!params.find(p => p.name === keyMatch[1])) {
-        params.push({ name: keyMatch[1], type: 'any' });
+        params.push({ 
+          name: keyMatch[1], 
+          type: 'Object',
+          required: true,
+          description: 'Inferred from context',
+          inferredFrom: 'context'
+        });
       }
     }
   }
