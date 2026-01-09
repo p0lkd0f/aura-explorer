@@ -1,15 +1,43 @@
+// ============================================
+// PARAMETER TYPES
+// ============================================
+
+export interface ActionParameter {
+  name: string;
+  type: string;
+  required: boolean;
+  description: string;
+  inferredFrom?: 'known' | 'context' | 'signature';
+}
+
+// ============================================
+// ACTION TYPES
+// ============================================
+
+export type ActionCategory = 'system' | 'record' | 'apex' | 'ui' | 'community' | 'commerce' | 'data' | 'auth' | 'custom';
+export type RiskLevel = 'low' | 'medium' | 'high' | 'critical' | 'unknown';
+
 export interface AuraAction {
   name: string;
   controller: string;
   descriptor: string;
   returnType: string;
-  parameters: { name: string; type: string }[];
+  parameters: ActionParameter[];
+  category?: ActionCategory;
+  riskLevel?: RiskLevel;
+  description?: string;
+  isKnown?: boolean;
+  requiresAuth?: boolean;
 }
 
 export interface AuraController {
   name: string;
   actions: AuraAction[];
 }
+
+// ============================================
+// PAYLOAD TYPES
+// ============================================
 
 export interface AuraPayload {
   actions: {
@@ -39,6 +67,26 @@ export interface FullHttpRequest {
   body: string;
 }
 
+// ============================================
+// SESSION TYPES
+// ============================================
+
+export interface SessionCookie {
+  name: string;
+  value: string;
+  domain: string;
+  path: string;
+  secure: boolean;
+  httpOnly: boolean;
+}
+
+export interface GuestSession {
+  cookies: SessionCookie[];
+  rawCookieHeader: string;
+  guestUserId?: string;
+  sessionType: 'guest' | 'authenticated' | 'unknown';
+}
+
 export interface AuraSession {
   cookies: string;
   token: string;
@@ -56,11 +104,24 @@ export interface SessionValidation {
   hasAuraContext: boolean;
 }
 
+// ============================================
+// SCAN RESULT TYPES
+// ============================================
+
+export interface DetectedEndpoint {
+  path: string;
+  type: string;
+}
+
 export interface ScanMetadata {
   fwuid: string | null;
   app: string | null;
   token: string | null;
   scannedUrl?: string;
+  apiVersion?: string;
+  loadedComponents?: string[];
+  detectedEndpoints?: DetectedEndpoint[];
+  auraContext?: AuraContext;
 }
 
 export interface ScanResult {
@@ -69,4 +130,27 @@ export interface ScanResult {
   controllers: AuraAction[];
   timestamp: Date;
   metadata?: ScanMetadata;
+  guestSession?: GuestSession;
+  jsFilesScanned?: number;
+  pageSize?: number;
+  scanDuration?: number;
+  warnings?: string[];
+}
+
+// ============================================
+// KNOWN CONTROLLER TYPES
+// ============================================
+
+export interface KnownActionDefinition {
+  params: { name: string; type: string; required: boolean; description: string }[];
+  returnType: string;
+  riskLevel: RiskLevel;
+  description: string;
+}
+
+export interface KnownControllerDefinition {
+  description: string;
+  category: ActionCategory;
+  riskLevel: RiskLevel;
+  actions: Record<string, KnownActionDefinition>;
 }
