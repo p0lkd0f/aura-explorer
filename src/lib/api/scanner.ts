@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import type { AuraAction, ScanResult, ScanMetadata, GuestSession, DetectedEndpoint, AuraContext, ActionParameter } from '@/lib/aura/types';
+import type { AuraAction, ScanResult, ScanMetadata, GuestSession, DetectedEndpoint, AuraContext, ActionParameter, DetectedVulnerability } from '@/lib/aura/types';
 
 // Response type matching the enhanced edge function
 export interface UrlScanResponse {
@@ -40,6 +40,7 @@ export interface UrlScanResponse {
     guestUserId?: string;
     sessionType: 'guest' | 'authenticated' | 'unknown';
   };
+  vulnerabilities?: DetectedVulnerability[];
   jsFilesScanned?: number;
   pageSize?: number;
   scanDuration?: number;
@@ -101,6 +102,7 @@ export async function scanUrl(url: string): Promise<ScanResult> {
     timestamp: new Date(),
     metadata,
     guestSession,
+    vulnerabilities: data.vulnerabilities,
     jsFilesScanned: data.jsFilesScanned,
     pageSize: data.pageSize,
     scanDuration: data.scanDuration,

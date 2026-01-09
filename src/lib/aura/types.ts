@@ -124,6 +124,17 @@ export interface ScanMetadata {
   auraContext?: AuraContext;
 }
 
+export interface DetectedVulnerability {
+  id: string;
+  name: string;
+  description: string;
+  severity: 'info' | 'low' | 'medium' | 'high' | 'critical';
+  category: string;
+  matchedPattern: string;
+  recommendation: string;
+  location?: string;
+}
+
 export interface ScanResult {
   success: boolean;
   rawMatches: number;
@@ -131,6 +142,7 @@ export interface ScanResult {
   timestamp: Date;
   metadata?: ScanMetadata;
   guestSession?: GuestSession;
+  vulnerabilities?: DetectedVulnerability[];
   jsFilesScanned?: number;
   pageSize?: number;
   scanDuration?: number;
